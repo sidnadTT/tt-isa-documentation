@@ -63,3 +63,11 @@ for (unsigned Bank = 0; Bank < 2; ++Bank) {
   }
 }
 ```
+
+## Instruction scheduling
+
+If this instruction does its clearing in the same cycle as the Matrix Unit executes a [`ZEROSRC`](ZEROSRC.md) with `SingleBankMatrixUnit` or `BothBanks` set, it takes that `ZEROSRC`'s choice of bank: it clears `MatrixUnit.SrcABank` / `MatrixUnit.SrcBBank` (or, for `BothBanks`, both banks) rather than `UnpackBank`, and `UnpackBank` is left as it was. This happens whichever of `SrcA` / `SrcB` the `ZEROSRC` itself clears.
+
+Whatever the `ZEROSRC`'s choice of bank, the two instructions also share the `SrcA` clear value in that cycle: if the `ZEROSRC` has `NegativeInfSrcA` set (even if it only clears `SrcB`), or this instruction clears `SrcA` with `NegativeInfSrcA` set, every `SrcA` bank cleared in that cycle is set to negative infinity.
+
+With `WaitLikeUnpacr` false, this instruction waits until the Matrix Unit's current bank belongs to the Unpackers, so it does not overlap a `ZEROSRC` that the Matrix Unit issues while still using that bank. With `WaitLikeUnpacr` true it waits only for `UnpackBank`, so it can execute while the Matrix Unit is using the other bank; software must not let it race with any `ZEROSRC` that has `SingleBankMatrixUnit` or `BothBanks` set.
