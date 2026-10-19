@@ -29,3 +29,5 @@ atomic {
 ## Instruction scheduling
 
 If the programmer intent is for the semaphore increment to happen after some earlier Tensix instruction has _finished_ execution, it may be necessary to insert a [`STALLWAIT`](STALLWAIT.md) instruction (with block bit B1) somewhere between that earlier instruction and the `SEMPOST` instruction.
+
+If the issuing thread's most recent [`SEMWAIT`](SEMWAIT.md) selects a semaphore that this instruction changes, its block mask does not include B1, and no instruction blocked by that mask has been issued by the thread since, then the `SEMWAIT` might still be latched when this instruction executes, and whether it is depends on timing. As this instruction can change the condition the `SEMWAIT` is waiting on, this is UndefinedBehavior: include B1 in the `SEMWAIT`'s block mask.
