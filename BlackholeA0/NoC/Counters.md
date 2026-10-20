@@ -42,6 +42,9 @@ Various counters are incremented (or occasionally decremented) at various points
 > [!WARNING]
 > If software initiates an NIU request [by writing to `NOC_CMD_CTRL`](MemoryMap.md#noc_cmd_ctrl) and then immediately reads from an NIU counter, [RISCV memory ordering](../TensixTile/BabyRISCV/MemoryOrdering.md) rules should be consulted to ensure that the read and the write are not reordered. To ensure correct ordering in this particular scenario, it suffices to read back from `NOC_CMD_CTRL` before performing the first counter read.
 
+> [!NOTE]
+> When the [NIU request FIFOs](MemoryMap.md#niu-request-fifos) are enabled, the increments described below as happening "as software writes to `NOC_CMD_CTRL`" instead happen as the request leaves its FIFO and is initiated, which can be much later. Requests still waiting in a FIFO are not included in any counter.
+
 ## Atomic requests
 
 At the initiating NIU, as software writes to `NOC_CMD_CTRL`:

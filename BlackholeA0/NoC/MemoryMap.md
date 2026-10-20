@@ -18,7 +18,7 @@ The high-level contents at this address are:
 |`NIU_BASE + 0x0000`|`0xFFB2_0000` to `0xFFB2_0043`|[NIU request initiator](#niu-request-initiators) #0|Read / write|
 |`NIU_BASE + 0x0044`|`0xFFB2_0044` to `0xFFB2_004B`|[NIU identification details](#niu-identification-details)|Read only|
 |`NIU_BASE + 0x0060`|`0xFFB2_0060` to `0xFFB2_0063`|[Clear NIU transaction ID counters](Counters.md#clear-niu-transaction-id-counters)|Write only|
-|`NIU_BASE + 0x0064`|`0xFFB2_0064` to `0xFFB2_006B`|NIU request FIFO status|Read only|
+|`NIU_BASE + 0x0064`|`0xFFB2_0064` to `0xFFB2_006B`|[NIU request FIFO status](#niu-request-fifos)|Read only|
 |`NIU_BASE + 0x0100`|`0xFFB2_0100` to `0xFFB2_017F`|[NIU and NoC router configuration](#niu-and-noc-router-configuration)|Read / write|
 |`NIU_BASE + 0x0200`|`0xFFB2_0200` to `0xFFB2_02FF`|[NIU counters](Counters.md)|Read only|
 |`NIU_BASE + 0x0300`|`0xFFB2_0300` to `0xFFB2_0377`|NoC router debug information|Read only|
@@ -28,13 +28,13 @@ The high-level contents at this address are:
 |`NIU_BASE + 0x0500`|`0xFFB2_0500` to `0xFFB2_05FF`|NoC router per-port per-VC packet counters|Read only|
 |`NIU_BASE + 0x0800`|`0xFFB2_0800` to `0xFFB2_0843`|[NIU request initiator](#niu-request-initiators) #1|Read / write|
 |`NIU_BASE + 0x0844`|`0xFFB2_0844` to `0xFFB2_084B`|[NIU identification details](#niu-identification-details) (again)|Read only|
-|`NIU_BASE + 0x0864`|`0xFFB2_0864` to `0xFFB2_086B`|NIU request FIFO status (again)|Read only|
+|`NIU_BASE + 0x0864`|`0xFFB2_0864` to `0xFFB2_086B`|[NIU request FIFO status](#niu-request-fifos) (again)|Read only|
 |`NIU_BASE + 0x1000`|`0xFFB2_1000` to `0xFFB2_102B`|[NIU request initiator](#niu-request-initiators) #2|Read / write|
 |`NIU_BASE + 0x1044`|`0xFFB2_1044` to `0xFFB2_104B`|[NIU identification details](#niu-identification-details) (again)|Read only|
-|`NIU_BASE + 0x1064`|`0xFFB2_1064` to `0xFFB2_106B`|NIU request FIFO status (again)|Read only|
+|`NIU_BASE + 0x1064`|`0xFFB2_1064` to `0xFFB2_106B`|[NIU request FIFO status](#niu-request-fifos) (again)|Read only|
 |`NIU_BASE + 0x1800`|`0xFFB2_1800` to `0xFFB2_182B`|[NIU request initiator](#niu-request-initiators) #3|Read / write|
 |`NIU_BASE + 0x1844`|`0xFFB2_1844` to `0xFFB2_184B`|[NIU identification details](#niu-identification-details) (again)|Read only|
-|`NIU_BASE + 0x1864`|`0xFFB2_1864` to `0xFFB2_186B`|NIU request FIFO status (again)|Read only|
+|`NIU_BASE + 0x1864`|`0xFFB2_1864` to `0xFFB2_186B`|[NIU request FIFO status](#niu-request-fifos) (again)|Read only|
 
 ## NIU Request Initiators
 
@@ -165,6 +165,25 @@ Software instructs the NIU to initiate a NoC request by writing details of the r
 
 If the queue referenced in the final step above has any initiators in it, then hardware will continuously try to assign a virtual channel number to the initiator at the front of the queue. Until this assignment has happened, software must not write to any fields of the initiator. Once this assignment happens, hardware will clear the low bit of `NOC_CMD_CTRL`, at which point software is free to reconfigure the initiator again and instruct another request through it. Given all this, it is recommended that software always checks the low bit of `NOC_CMD_CTRL` before writing to any fields of the initiator.
 
+The above is the behavior with the request FIFOs disabled (bit 16 of [`NIU_CFG_0`](#niu_cfg_0) clear, the default). With them enabled, writes to `NOC_CMD_CTRL` instead go through a FIFO; see [NIU request FIFOs](#niu-request-fifos).
+
+## NIU Request FIFOs
+
+When bit 16 of [`NIU_CFG_0`](#niu_cfg_0) is set, each of the four request initiators has a FIFO of up to 16 requests in front of it. Writing to `NOC_CMD_CTRL` with the low bit set then captures the current values of the initiator's other fields as a request and appends it to the initiator's FIFO, and software can reprogram the initiator and write to `NOC_CMD_CTRL` again straight away, without waiting for the low bit of `NOC_CMD_CTRL` to clear. Requests leave the FIFOs in order, one request at a time across all four initiators, and each is then initiated as [described above](#noc_cmd_ctrl), using the field values it was captured with.
+
+|Name|Example Address|Contents|
+|---|---|---|
+|`CMD_BUF_AVAIL`|`0xFFB2_0064`|Bits `8*i` through `8*i+7` give the number of free entries (`0` through `16`) in the FIFO of initiator `i`, so `0x1010_1010` means all four FIFOs are empty. Reads as zero when the FIFOs are disabled.|
+|`CMD_BUF_OVFL`|`0xFFB2_0068`|Bit `i` is set if a write to `NOC_CMD_CTRL` of initiator `i` has been discarded because its FIFO was full. It stays set until software writes `1` to bit 4 of `DEBUG_COUNTER_RESET`. Reads as zero when the FIFOs are disabled.|
+
+With the FIFOs enabled, software needs to be aware of the following:
+* **A write to `NOC_CMD_CTRL` when the initiator's FIFO is full is discarded**: the request is never sent and never counted, and nothing but `CMD_BUF_OVFL` records that it happened. Software must check that the initiator's byte of `CMD_BUF_AVAIL` is non-zero before each write to `NOC_CMD_CTRL` (or otherwise know that the FIFO has room, e.g. by never having more than 16 requests queued on it).
+* The low bit of `NOC_CMD_CTRL` only reflects the request currently being initiated. It reads as `0` while other requests are still waiting in the FIFO, including between one request and the next, so it cannot be used to tell whether the FIFO has drained.
+* The `NIU_MST_REQS_OUTSTANDING_ID` and `NIU_MST_WRITE_REQS_OUTGOING_ID` [counters](Counters.md) are incremented as a request leaves the FIFO and is initiated, not as software writes to `NOC_CMD_CTRL`. A request still waiting in a FIFO is not included in any counter, so a counter can read as zero while a request on its transaction ID is still queued. To wait for requests to complete, software should first read `CMD_BUF_AVAIL` until every FIFO that could hold such a request is empty, and only then (as a separate step, issuing the first counter read only after the `CMD_BUF_AVAIL` value has been returned and tested) read the counters. A request is counted a few cycles after it leaves its FIFO, so a counter read issued alongside the `CMD_BUF_AVAIL` read (e.g. both loaded and then tested together in one loop) can be too early.
+
+> [!WARNING]
+> Writes to `NOC_CMD_CTRL` also pass through the FIFOs while they are disabled, and one made while a request from another initiator is still being initiated can leave a stale entry behind in its initiator's FIFO (up to 16 per initiator). Nothing shows these while the FIFOs are disabled (`CMD_BUF_AVAIL` reads as zero). Enabling the FIFOs does not send them, but the next write to `NOC_CMD_CTRL` of any initiator after enabling them does: each stale entry is then initiated as a request again, a second copy (with the same field values) of the earlier request that left it, alongside the new request. Only an NIU reset removes them, so software should enable the FIFOs before initiating any requests, or check that `CMD_BUF_AVAIL` reads as `0x1010_1010` straight after enabling them.
+
 ## NIU Identification Details
 
 A pair of read-only 32-bit registers provide details about the NIU and what it is attached to.
@@ -221,7 +240,7 @@ Each NIU has a handful of configuration registers in its memory map. Some of the
 |[`NOC_ID_TRANSLATE_ROW_MASK`](Coordinates.md#translation-algorithm)|`0xFFB2_0154`|All 32 bits have particular purpose|
 |[`DDR_COORD_TRANSLATE_TABLE_0`](Coordinates.md#translation-algorithm)|`0xFFB2_0158`|160-bit lookup table (plus 2 extra bits), split across 6x 32-bit registers|
 |[`DDR_COORD_TRANSLATE_COL_SWAP`](Coordinates.md#translation-algorithm)|`0xFFB2_0170`|All 32 bits have particular purpose|
-|`DEBUG_COUNTER_RESET`|`0xFFB2_0174`||
+|`DEBUG_COUNTER_RESET`|`0xFFB2_0174`|Writing `1` to bit 4 clears [`CMD_BUF_OVFL`](#niu-request-fifos)|
 |[`NIU_TRANS_COUNT_RTZ_CFG`](#niu_trans_count_rtz_cfg)|`0xFFB2_0178`|17 non-contiguous bits have particular purpose|
 |[`NIU_TRANS_COUNT_RTZ_CLR`](#niu_trans_count_rtz_clr)|`0xFFB2_017C`|Zero bits of storage, writes instead clear bits of [`NIU_TRANS_COUNT_RTZ_SOURCE`](#niu_trans_count_rtz_source)|
 
@@ -234,7 +253,7 @@ Each NIU has a handful of configuration registers in its memory map. Some of the
 |13|1|Double store disable; has no effect in Tensix tiles and Ethernet tiles, but if set to `true` in other types of tile, the tile will ignore the `NOC_PACKET_TAG_HEADER_STORE` flag|
 |14|1|Coordinate translation enable; if set to `true`, various other registers [define a coordinate translation scheme](Coordinates.md#coordinate-translation)|
 |15|1|AXI subordinate enable; only has an effect in DRAM tiles, where it switches the NoC-visible address space between being GDDR-based and being RISCV/L1-based|
-|16|1|Request FIFO enable|
+|16|1|Request FIFO enable; see [NIU request FIFOs](#niu-request-fifos)|
 |17|15|Available for general use|
 
 ### `ROUTER_CFG_0`
