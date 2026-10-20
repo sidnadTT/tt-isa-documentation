@@ -8,7 +8,7 @@ If fetching datums from `Dst` (as is usually the case), the early format convers
 
 ||From FP32 (e8m23)|From BF16 (e8m7)|From FP16 (e5m10)|From INT32 (e0m31)|From INT16 (e0m15)|
 |:-:|---|---|---|---|---|
-|**To FP32 (e8m23)**|Identity|Identity on Blackhole; on Wormhole, no (keep as BF16 then use late conversion, or go via TF32)|No (keep as FP16 then use late conversion)|Bitcast|No|
+|**To FP32 (e8m23)**|Identity|No (keep as BF16 then use late conversion, or go via TF32; on Blackhole, an FP32 intermediate is `UnsupportedFunctionality`)|No (keep as FP16 then use late conversion)|Bitcast|No|
 |**To TF32 (e8m10)**|Rounding|Rounding (though more efficient to keep as BF16 then use late conversion)|No (keep as FP16 then use late conversion)|Bitcast to FP32 then rounding|No|
 |**To BF16 (e8m7)**|Rounding or truncation|Rounding or identity|No (keep as FP16 then use late conversion)|Bitcast of top 16 bits|No|
 |**To E8M6**|Rounding|Rounding|No|No|No|
@@ -204,7 +204,7 @@ The early format conversion is configured using a variety of configuration field
     * **Identity (i.e. preserve denormals and NaN):** Set `IntermediateFormat = BF16` and `Read_raw = true`. If the late conversion is from BF16 to FP16, also set `Round_10b_mant = false`. Note that setting `IntermediateFormat = BFP8` and `Read_raw = true` is _not_ an identity: it preserves every other value, but turns negative zero into negative infinity.
   * **To E8M6:** Set `IntermediateFormat = BFP8` and `Read_raw = false`.
   * **To FP16 (Blackhole only):** Set `IntermediateFormat = FP16` and `Round_10b_mant = true`. This is the exponent narrowing, with no rounding.
-  * **To FP32 (Blackhole only):** Set `IntermediateFormat = FP32`, `Round_10b_mant = false` and `Read_raw = false`. This is an identity: each BF16 datum is widened to FP32 with zero low mantissa bits, keeping NaN payloads, denormals and negative zero.
+  * **To FP32:** Keep the datum as BF16 (as above) and let the late conversion widen it from BF16 to FP32. On Blackhole, setting `IntermediateFormat = FP32` instead is `UnsupportedFunctionality`: each BF16 datum lands in the high 16 bits, but the low 16 bits are not zero; they come from other data in `Dst`.
   * **To INT8 (sign bit only):** Set `IntermediateFormat = INT8` and `Read_unsigned = false` and `Read_raw = true`.
 * **From FP16:** Set `Read_32b_data = false`, then:
   * **To FP16:** Set `IntermediateFormat = FP16`.
