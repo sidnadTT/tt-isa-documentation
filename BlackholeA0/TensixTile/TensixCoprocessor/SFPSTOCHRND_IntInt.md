@@ -24,7 +24,7 @@ TT_SFP_STOCH_RND(/* u2 */ RoundingMode,
 ```
 
 > [!NOTE]
-> When `UseImm5` is `false`, software should set `VB` equal to `VC` to work around a false dependency bug in the automatic stalling logic of some other instructions.
+> When `UseImm5` is `true`, `VB` is not used, and software should set it to 9, as for the [floating-point flavors](SFPSTOCHRND_FloatFloat.md). No false stall arises in this flavor either way: with `UseImm5` the automatic stalling logic does not look at `VB`, and without it `VB` is a real input.
 
 ## Encoding
 

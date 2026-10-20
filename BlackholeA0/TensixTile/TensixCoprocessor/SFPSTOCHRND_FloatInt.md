@@ -25,12 +25,12 @@ The result is a 32-bit sign-magnitude integer, though if the absolute value was 
 ## Syntax
 
 ```c
-TT_SFP_STOCH_RND(/* u2 */ RoundingMode, 0, /* u4 */ VC,
+TT_SFP_STOCH_RND(/* u2 */ RoundingMode, 0, 9,
                  /* u4 */ VC, /* u4 */ VD, /* u3 */ Mod1)
 ```
 
 > [!NOTE]
-> `VC` is specified twice in the syntax to work around a false dependency bug in the automatic stalling logic of some other instructions. If instead looking at the encoding diagram (below), the mitigation is to set `VB` equal to `VC`.
+> `VB` is not used by this flavor of `SFPSTOCHRND`, but the automatic stalling logic treats it as an input, as it is for the [integer flavor](SFPSTOCHRND_IntInt.md) without `UseImm5`. If `VB` names an `LReg` that the previous instruction is still writing (e.g. the result of an [`SFPMAD`](SFPMAD.md)), the instruction stalls for a cycle for no reason. Software should set `VB` to 9: the stalling logic never stalls on `LReg[8]` through `LReg[15]`, which no instruction writes late. Setting `VB` equal to `VC` also avoids the false stall, since the stall then coincides with the real dependency on `VC`, but 9 is the canonical choice.
 
 ## Encoding
 
