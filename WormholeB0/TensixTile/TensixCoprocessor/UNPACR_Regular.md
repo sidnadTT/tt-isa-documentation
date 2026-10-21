@@ -311,6 +311,10 @@ if (BfpExpStream) {
     UndefinedBehavior();
   }
 }
+if (IsUncompressed && DatumSizeBytes == 0.25 && (InputNumDatums & 1)) {
+  // BFP2a/BFP2 datums are unpacked in pairs, so an odd count also writes the position after the last datum.
+  UnsupportedFunctionality();
+}
 if (DiscontiguousInputRows && (UpsampleZeroes > 0 || !IsUncompressed)) {
   UndefinedBehavior();
 }
