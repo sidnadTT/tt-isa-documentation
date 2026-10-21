@@ -57,6 +57,8 @@ Some late format conversions zero further than that. When `LateFromFormat` to `L
 
 A tile can also end partway into a row of 16 datums, when `ReadIntfSel` is `0b0001` and some of its `PACR` instructions pack 8 datums. If the datums are narrower than 32 bits in Dst (`In_data_format` is not FP32, TF32 or INT32), the packer completes that final row with zeros: after the data, it writes the output for 8 more datums, each zero. For example, a tile of 8 BF16 datums packed as BF16 is 16 bytes followed by 16 bytes of zeros, and the same tile packed as FP32 is 32 bytes followed by 32 bytes of zeros. With `Pack_L1_Acc`, these zeros are accumulated like any other datum. A tile whose datums are 32 bits wide in Dst gets no such row of zeros.
 
+The L1 address of a tile is computed by its first `PACR` (see the [output address generator](../../../WormholeB0/TensixTile/TensixCoprocessor/Packers/OutputAddressGenerator.md)), except when `Out_data_format` is a BFP format: then a change to the packer's channel 1 address counters between `PACR` instructions within the first four rows of the tile moves the whole tile, including the rows already packed, to the address the later `PACR` computes. Changing those counters or `L1_Dest_addr` anywhere within a tile packed to a BFP format is `UnsupportedFunctionality`.
+
 > [!TIP]
 > The `THCON_SEC0_REG1_Auto_set_last_pacr_intf_sel` configuration field causes hardware to compute `ReadIntfSel` for the final `PACR` of an xy plane from the number of rows remaining in the plane, which produces exactly the `0b0001` / `0b0011` / `0b0111` / `0b1111` masks.
 
