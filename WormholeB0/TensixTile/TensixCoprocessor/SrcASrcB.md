@@ -23,6 +23,22 @@ uint1_t Unpackers[0]::SrcBank = 0; // For SrcA
 uint1_t Unpackers[1]::SrcBank = 0; // For SrcB
 ```
 
+Unpacker 0 also remembers whether the most recent [`UNPACR`](UNPACR_Regular.md) it executed wrote to `Dst` rather than `SrcA`:
+```c
+bool Unpackers[0]::WroteDst = false;
+```
+
+### Hardware bug: giving `SrcA` to the Matrix Unit after an `UNPACR` to `Dst`
+
+On both Wormhole and Blackhole, while `Unpackers[0].WroteDst` is `true`, giving a `SrcA` bank to the Matrix Unit (FPU) is `UndefinedBehavior` if it is done by any of:
+* An `UNPACR` to `Dst` with `FlipSrc` set. An `UNPACR` to `SrcA` with `FlipSrc` set is fine: it sets `WroteDst` to `false` before giving the bank.
+* The set-dvalid form of [`UNPACR_NOP`](UNPACR_NOP_SETDVALID.md). On Blackhole, the same applies to the `UNPACR_NOP` flavor that sets data valid without clearing anything (clear-to-one with clear-to-one format 3), but not to an `UNPACR_NOP` that clears the unpacker's `SrcA` bank and gives it to the Matrix Unit in one instruction.
+* [`SETDVALID`](SETDVALID.md) with its `SrcA` bit set.
+
+The hardware keeps two copies of `Unpackers[0].SrcBank`: one picks the bank that `UNPACR` writes datums to, and the other picks the bank whose `AllowedClient` the Unpackers wait on and hand to the Matrix Unit. Giving a bank to the Matrix Unit normally flips both copies, but the cases above flip only the second one. The two copies then point at different banks: subsequent unpacks write their datums into the bank that the Matrix Unit owns (possibly while it is reading it), and the bank they give to the Matrix Unit holds stale data. A second such event flips the second copy back, and `CLEARDVALID` with its reset bit set zeroes both copies; neither changes `WroteDst`. Only `UNPACR` on unpacker 0 changes `WroteDst`, so it carries over from one kernel to the next.
+
+To avoid the bug, software executes one `UNPACR` to `SrcA` after the last `UNPACR` to `Dst` and before giving `SrcA` to the Matrix Unit by `UNPACR_NOP` or `SETDVALID`. That `UNPACR` need not give the bank to the Matrix Unit, but it is an ordinary `UNPACR` to `SrcA` in every other respect (it writes its datums into the unpacker's `SrcA` bank, and every rule for `UNPACR` to `SrcA` applies to it). On Blackhole, giving `SrcA` with an `UNPACR_NOP` that also clears it avoids the bug without that `UNPACR`.
+
 ## Implied data format (Blackhole only)
 
 On Blackhole, each `SrcA` and `SrcB` bank can carry an "implied" data format which (when enabled) overrides the configured `SrcAFmt` / `SrcBFmt` for Matrix Unit (FPU) instructions consuming that bank. The implied format is written by the Unpackers as part of populating a bank.

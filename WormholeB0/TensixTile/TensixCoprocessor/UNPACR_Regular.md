@@ -491,7 +491,13 @@ for (unsigned i = 0; i < 3; ++i) {
   }
 }
 uint6_t SrcRowBase = (WhichUnpacker ? ThreadConfig[CurrentThread].SRCB_SET_Base : ThreadConfig[CurrentThread].SRCA_SET_Base) << 4;
+if (WhichUnpacker == 0) {
+  Unpackers[0].WroteDst = UnpackToDst;
+}
 if (FlipSrc) {
+  if (WhichUnpacker == 0 && Unpackers[0].WroteDst) {
+    UndefinedBehavior(); // Hardware bug; see Unpackers[0].WroteDst in SrcASrcB.md
+  }
   (WhichUnpacker ? SrcB : SrcA)[CurrentUnpacker.SrcBank].AllowedClient = SrcClient::MatrixUnit;
   if (TTArchitecture == Blackhole) {
     (WhichUnpacker ? ImpliedSrcBFmt : ImpliedSrcAFmt)[CurrentUnpacker.SrcBank] = OutDataFormat;

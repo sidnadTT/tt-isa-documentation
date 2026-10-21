@@ -26,6 +26,9 @@ if (TTArchitecture == Blackhole) {
   UnsupportedFunctionality(); // No known usage and interaction with ImpliedSrc*Fmt is ill-specified; UNPACR_NOP is recommended as an alternative
 }
 if (FlipSrcA) {
+  if (Unpackers[0].WroteDst) {
+    UndefinedBehavior(); // Hardware bug; see Unpackers[0].WroteDst in SrcASrcB.md
+  }
   SrcA[Unpackers[0].SrcBank].AllowedClient = SrcClient::MatrixUnit;
   if (TTArchitecture == Blackhole) {
     ImpliedSrcAFmt[Unpackers[0].SrcBank] = UnpredictableValue();

@@ -20,6 +20,9 @@ TT_UNPACR_NOP(/* u1 */ WhichUnpacker, 0x7)
 uint1_t StateID = ThreadConfig[CurrentThread].CFG_STATE_ID_StateID;
 auto& ConfigState = Config[StateID];
 if (WhichUnpacker == 0) {
+  if (Unpackers[0].WroteDst) {
+    UndefinedBehavior(); // Hardware bug; see Unpackers[0].WroteDst in SrcASrcB.md
+  }
   SrcA[Unpackers[0].SrcBank].AllowedClient = SrcClient::MatrixUnit;
   if (TTArchitecture == Blackhole) {
     ImpliedSrcAFmt[Unpackers[0].SrcBank] = ConfigState.THCON_SEC[0].REG2_Out_data_format;
