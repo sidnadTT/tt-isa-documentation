@@ -21,7 +21,7 @@ This flavour of `SFPSTOCHRND` is intended to be used prior to an [`SFPSTORE`](SF
 **Backend execution unit:** [Vector Unit (SFPU)](VectorUnit.md), round sub-unit
 
 > [!TIP]
-> The round to zero mode is new in Blackhole, though a hardware bug means it sometimes incorrectly rounds away from zero.
+> The round to zero mode is new in Blackhole, though a hardware bug means that it rounds away from zero, by one unit in the last place kept, whenever the discarded mantissa bits are all ones: `(x & 0x1fff) == 0x1fff` for `SFPSTOCHRND_MOD1_FP32_TO_FP16A`, `(x & 0xffff) == 0xffff` for `SFPSTOCHRND_MOD1_FP32_TO_FP16B`. The carry can reach the exponent, and ±`0x7f7fffff` becomes ±infinity. Software that needs exact round to zero can clear the two lowest bits of the input first, e.g. `SFPAND` with `SFPAND_MOD1_USE_VB` and an `LReg` holding `0xfffffffc` into a temporary: those bits are always discarded, so the result is otherwise unchanged and the discarded bits are never all ones.
 
 ## Syntax
 

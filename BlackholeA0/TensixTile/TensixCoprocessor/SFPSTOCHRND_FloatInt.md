@@ -20,7 +20,7 @@ The result is a 32-bit sign-magnitude integer, though if the absolute value was 
 **Backend execution unit:** [Vector Unit (SFPU)](VectorUnit.md), round sub-unit
 
 > [!TIP]
-> The round to zero mode is new in Blackhole, though a hardware bug means that the three FP32 values `0.9999998807907` / `0.9999999403954` / `1.999999880791` incorrectly round away from zero rather than toward zero.
+> The round to zero mode is new in Blackhole, though a hardware bug means that the three FP32 magnitudes `0.9999998807907` / `0.9999999403954` / `1.999999880791` (`0x3f7ffffe` / `0x3f7fffff` / `0x3fffffff`), of either sign, incorrectly round away from zero, to a magnitude of 1, 1 and 2 respectively, rather than toward zero. These are the only inputs whose discarded bits are all ones. Software that needs exact round to zero can clear the two lowest bits of the input first, e.g. `SFPAND` with `SFPAND_MOD1_USE_VB` and an `LReg` holding `0xfffffffc` into a temporary: those bits are always discarded (or the input saturates either way), so the result is otherwise unchanged and the discarded bits are never all ones.
 
 ## Syntax
 
