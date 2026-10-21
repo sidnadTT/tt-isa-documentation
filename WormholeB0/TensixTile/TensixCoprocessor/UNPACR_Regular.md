@@ -456,7 +456,7 @@ for (unsigned i = 0; i < InputNumDatums && DecompressNumDatums; ) {
           }
           SrcA[Bank][Row][Col] = Datum;
         } else {
-          // Write to Dst:
+          // Write to Dst (no SrcA bank is written, though the write still waits for SrcA[Bank] above):
           Row -= 4;
           Row &= 0x3ff;
           if (OutDataFormat in {FP32, TF32, INT32}) {
@@ -464,7 +464,6 @@ for (unsigned i = 0; i < InputNumDatums && DecompressNumDatums; ) {
           } else {
             Dst16b[Row][Col] = Datum;
           }
-          SrcA[Bank][:][:] = UnpredictableValue(); // UnpackToDst clobbers SrcA[Bank]; exact rows not characterized.
         }
       }
     }
