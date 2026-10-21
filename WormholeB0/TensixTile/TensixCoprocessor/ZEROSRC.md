@@ -62,4 +62,6 @@ for (unsigned Bank = 0; Bank < 2; ++Bank) {
 
 If clearing just a single bank, software may wish to use [`STALLWAIT`](STALLWAIT.md) (with block bit B6 and some of condition codes C8 through C11) prior to using `ZEROSRC`.
 
+`ZEROSRC` does not wait for unpack instructions that are still writing to `SrcA` or `SrcB`. If an [`UNPACR`](UNPACR.md) that writes a bank this `ZEROSRC` clears may still be in progress, some of its datums can land after the clear, leaving that data in the bank instead of zeros; on Wormhole this happens whether `ZEROSRC` clears one bank or both. Use `STALLWAIT` with block bit B6 and condition codes C1 and/or C2 (the Unpackers that may still be writing) before such a `ZEROSRC`.
+
 If an Unpacker's [`UNPACR_NOP`](UNPACR_NOP_ZEROSRC.md) clears a bank in the same cycle as a `ZEROSRC` with `SingleBankMatrixUnit` or `BothBanks` set, the `UNPACR_NOP` clears the Matrix Unit's current bank of its register (or both banks, for `BothBanks`) rather than the Unpacker's own bank, even if this `ZEROSRC` does not clear that register. The two also share the `SrcA` clear value whenever they coincide; see [`UNPACR_NOP`'s instruction scheduling](UNPACR_NOP_ZEROSRC.md#instruction-scheduling).
