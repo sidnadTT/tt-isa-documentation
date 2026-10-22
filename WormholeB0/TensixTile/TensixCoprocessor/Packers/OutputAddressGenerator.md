@@ -108,6 +108,10 @@ for (unsigned i = 0; i < 3; ++i) {
 }
 ```
 
+## Tile headers
+
+`L1_Dest_addr` is in units of 16 bytes. With `Sub_l1_tile_header_size` false, a tile's output starts one unit (16 bytes) after it, leaving room for a 16-byte tile header in front of the data; with it true, the output starts at `L1_Dest_addr` itself. `Add_tile_header_size` does not move the output: it only makes the packer count the header in `AccTileSize` (see [TDMA-RISC](../../TDMA-RISC.md)).
+
 ## Output alignment
 
 Note the `(Addr & 0x1ffff) << 4` as part of all the assignments to `ByteAddress`: packer output is always done as aligned 16-byte writes to L1. Individual datums are at most 4 bytes, so datums get buffered up at the bottom of the packer pipeline, and then written out to L1 once 16 bytes have been buffered up. These buffers persist between consecutive pack instructions, so the output of an _individual_ pack instruction needn't be aligned, but the output of a _group_ of pack instructions will be. If these buffers are forcibly flushed before they are full, then they will be padded with zeroes to make them full.
