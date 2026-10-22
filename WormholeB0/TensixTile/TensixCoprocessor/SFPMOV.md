@@ -24,14 +24,15 @@ TT_SFPMOV(0, /* u4 */ VC, /* u4 */ VD, /* u4 */ Mod1)
 ## Functional model
 
 ```c
+bool AllLanes = Mod1 == SFPMOV_MOD1_ALL_LANES_ENABLED;
 if (Mod1 & 4) { // Reserved instruction modifier
   NonContractualBehavior {
-    Mod1 &= ~4; // Current silicon behavior (not architecturally guaranteed)
+    Mod1 &= ~4; // Current silicon behavior (not architecturally guaranteed); Mod1 == 6 still only writes enabled lanes
   }
 }
 lanewise {
   if (VD < 12 || LaneConfig.DISABLE_BACKDOOR_LOAD) {
-    if (LaneEnabled || Mod1 == SFPMOV_MOD1_ALL_LANES_ENABLED) {
+    if (LaneEnabled || AllLanes) {
       uint32_t x;
       if (Mod1 & SFPMOV_MOD1_FROM_SPECIAL) {
         // The interpretation of VC here mostly matches SFPCONFIG's interpretation of VD.

@@ -151,7 +151,7 @@ struct {
 } FlagStack[32];
 ```
 
-Each lane's stack holds eight entries. Software must not push onto a full stack, pop from an empty one, or replace the top of an empty one; the instruction descriptions mark each of these as `NonContractualBehavior`, and current hardware does what the definitions above say: a push onto a full stack overwrites `Entries[Ptr % 8]` and leaves `Ptr` above 8, a pop from an empty stack leaves `Ptr` at 15, and replacing the top of an empty stack writes `Entries[7]`. While `Ptr` is above 8, everything [`SFPPUSHC`](SFPPUSHC.md), [`SFPPOPC`](SFPPOPC.md) and [`SFPCOMPC`](SFPCOMPC.md) do with the stack is likewise `NonContractualBehavior`, as defined above; what the stack-mutating modes of [`SFPLE`](SFPLE.md) and [`SFPGT`](SFPGT.md) do then is `UndefinedBehavior`.
+Each lane's stack holds eight entries. Software must not push onto a full stack, pop from an empty one, or replace the top of an empty one; the instruction descriptions mark each of these as `NonContractualBehavior`, and current hardware does what the definitions above say: a push onto a full stack overwrites `Entries[Ptr % 8]` and leaves `Ptr` above 8, a pop from an empty stack leaves `Ptr` at 15, and replacing the top of an empty stack writes `Entries[7]`. While `Ptr` is above 8, everything [`SFPPUSHC`](SFPPUSHC.md), [`SFPPOPC`](SFPPOPC.md), [`SFPCOMPC`](SFPCOMPC.md) and the stack-mutating modes of [`SFPLE`](SFPLE.md) and [`SFPGT`](SFPGT.md) do with the stack is likewise `NonContractualBehavior`, as defined above.
 
 Software is encouraged to set `UseLaneFlagsForLaneEnable` to `true` and then always leave it as `true`, though it doesn't have to.
 

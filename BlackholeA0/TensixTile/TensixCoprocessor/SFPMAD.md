@@ -79,6 +79,7 @@ A [bit-perfect software model](../../../Miscellaneous/FMA/README.md) is provided
 > * `SFPIADD`: the stalling logic does not realize that `SFPIADD` reads from `VD`.
 > * `SFPSHFT`: the stalling logic does not realize that `SFPSHFT` reads from `VD`.
 > * `SFPCONFIG`: the stalling logic does not realize that `SFPCONFIG` can read from `LReg[0]`.
+> * [`SFPSETEXP`](SFPSETEXP.md), [`SFPSETMAN`](SFPSETMAN.md) and [`SFPSETSGN`](SFPSETSGN.md) without their `_MOD1_ARG_IMM` modifier: the stalling logic has the modifier backwards, so it thinks that these instructions read from `VD` when `_MOD1_ARG_IMM` is used (they don't), and doesn't realize that they read from `VD` when it isn't.
 > * `SFPSWAP` in all modes _except_ `SFPSWAP_MOD1_SWAP`: these modes read from `VC` and `VD` during their 1<sup>st</sup> cycle to compare them, and then read them _again_ during their 2<sup>nd</sup> cycle if they need to be swapped, but the stalling logic does not realize that any reads are performed during the 1<sup>st</sup> cycle.
 > * `SFPSHFT2` when `SFPSHFT2_MOD1_SUBVEC_SHFLROR1_AND_COPY4` or `SFPSHFT2_MOD1_SUBVEC_SHFLROR1` or `SFPSHFT2_MOD1_SUBVEC_SHFLSHR1` are used: the stalling logic does not realize that these modes of `SFPSHFT2` read anything.
 > * `SFPSHFT2` when `SFPSHFT2_MOD1_SHFT_LREG` or `SFPSHFT2_MOD1_SHFT_IMM` are used: the stalling logic thinks that these modes of `SFPSHFT2` read from `VD` whereas they actually read from `VB`.

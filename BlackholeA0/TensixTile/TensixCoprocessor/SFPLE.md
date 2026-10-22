@@ -33,13 +33,14 @@ lanewise {
       }
     }
     if (Mod1 & SFPLE_MOD1_MUTATE_STACK) {
-      if (!FlagStack.IsEmpty()) {
-        if (Mod1 & SFPLE_MOD1_MUTATE_OR) {
-          FlagStack.Top().LaneFlags |= IsVcGreaterEqual;
-        } else {
-          FlagStack.Top().LaneFlags &= IsVcGreaterEqual;
-        }
+      // On an empty stack, this writes Entries[7] (as ReplaceTop does), which only a stack moved past its ends reads.
+      FlagStackEntry Top = FlagStack.Top();
+      if (Mod1 & SFPLE_MOD1_MUTATE_OR) {
+        Top.LaneFlags |= IsVcGreaterEqual;
+      } else {
+        Top.LaneFlags &= IsVcGreaterEqual;
       }
+      FlagStack.ReplaceTop(Top);
     }
   }
 }

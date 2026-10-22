@@ -147,8 +147,23 @@ case SFPSHFT2_MOD1_SHFT_IMM:
     }
   }
   break;
-default:
-  UndefinedBehavior();
+default: // Mod1 7 - 15
+  NonContractualBehavior {
+    // Current silicon behavior (not architecturally guaranteed): as SFPSHFT2_MOD1_SHFT_LREG.
+    if (VD < 8 || VD == 16) {
+      lanewise {
+        if (LaneEnabled) {
+          int32_t vc = LReg[VC].i32;
+          if (vc >= 0) {
+            LReg[VD].u32 = LReg[VB].u32 << (vc & 31);
+          } else {
+            LReg[VD].u32 = LReg[VB].u32 >> ((-vc) & 31);
+          }
+        }
+      }
+    }
+  }
+  break;
 }
 ```
 
