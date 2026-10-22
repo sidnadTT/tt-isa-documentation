@@ -42,6 +42,8 @@ Note that `Config` in the above functions refers to Tensix backend configuration
 
 Each of the valid bits is indexed by physical row: an access to `Dst32b[Row]` consults `DstRowValid[Adj32(Row)]` (and does not consult `Adj32(Row) + 8`), whereas an access to `Dst16b[Row]` consults `DstRowValid[Adj16(Row)]`.
 
+Not every client consults them; [`ZEROACC`](ZEROACC.md) says how each reads an undefined row. In particular, `ZEROACC` doesn't give the Vector Unit (SFPU) zeros: [`SFPLOAD`](SFPLOAD.md) of an undefined row is `UndefinedBehavior`, so software that wants zeros in `Dst` for the Vector Unit to read must write them, e.g. with [`SFPSTORE`](SFPSTORE.md).
+
 If a `ZEROACC` executes in the same cycle as a Vector Unit or unpacker write to `Dst`, the write's update of `DstRowValid` is lost, even if the `ZEROACC` targets other rows (e.g. the other half of a double-buffered `Dst`). Software must not let such writes race with another thread's `ZEROACC`.
 
 ## Data types
