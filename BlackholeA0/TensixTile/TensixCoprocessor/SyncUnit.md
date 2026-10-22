@@ -56,6 +56,8 @@ Reads from `SemaphoreAccess[i]` behave as:
 return Semaphores[i].Value;
 ```
 
+Due to a hardware bug, if RISCV T<sub>i</sub> _starts_ executing a load from `SemaphoreAccess[i]`, it must not _start_ executing another load from `SemaphoreAccess[j]` (for any `j`, including `j == i`) until the original load has _finished_ executing. Failure to comply with this constraint can cause the second load to never finish, so that RISCV T<sub>i</sub> hangs; two such loads back to back, the second not using the first's result, are enough. Compliance is possible by having an instruction after the load (and before the next load from `SemaphoreAccess`) which consumes the result of the load, as a polling loop that branches on each value it reads does.
+
 Writes to `SemaphoreAccess[i] = new_val` behave as:
 ```c
 atomic {
