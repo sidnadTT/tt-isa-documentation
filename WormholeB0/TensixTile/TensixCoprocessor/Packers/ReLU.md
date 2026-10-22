@@ -38,17 +38,25 @@ float ReLUStage(float x) {
     return x <= 0 ? 0 : x;
   case 2: // MIN_THRESHOLD_RELU
     // ReLU with configurable threshold
-    if (signbit(Threshold)) UndefinedBehavior(); // Threshold <= -0 is undefined
+    if (signbit(Threshold)) NonContractualBehavior {
+      return (signbit(x) || Exponent(x) <= Exponent(Threshold)) ? 0 : x;
+    }
     return x <= Threshold ? 0 : x;
   case 3: // MAX_THRESHOLD_RELU
     // ReLU that clamps between 0 and Threshold
-    if (signbit(Threshold)) UndefinedBehavior(); // Threshold <= -0 is undefined
+    if (signbit(Threshold)) NonContractualBehavior {
+      if (signbit(x)) return 0;
+      else if (Exponent(x) > Exponent(Threshold)) return Threshold;
+      else return x;
+    }
     if (x <= 0) return 0;
     else if (x > Threshold) return Threshold;
     else return x;
   }
 }
 ```
+
+A `Threshold` with its sign bit set (-0, a negative denormal, -infinity or a negative NaN included) is a `NonContractualBehavior` in `MIN_THRESHOLD_RELU` and `MAX_THRESHOLD_RELU`. The hardware compares exponents before signs, so such a `Threshold` acts through its exponent alone. `Exponent(v)` is the biased exponent field of the bit pattern `v` in the format `Threshold` is interpreted as (8 bits for BF16, 5 bits for FP16), and `x` is the datum after the early format conversion, as that conversion leaves it (infinities and NaNs included). Datums whose sign bit is set always become zero. In `MIN_THRESHOLD_RELU`, a datum becomes zero unless its exponent field exceeds that of `Threshold`; when `Threshold`'s exponent field is all ones, every datum becomes zero. In `MAX_THRESHOLD_RELU`, a datum whose exponent field exceeds that of `Threshold` (infinities and NaNs included, unless `Threshold`'s exponent field is all ones) becomes `Threshold` itself, sign included, and the late format conversion then encodes it as it would the positive value with the same magnitude, with the sign bit set: -0 stays -0, and a denormal `Threshold` takes the encoding its positive counterpart does, block floating-point formats included. The result does not depend on earlier packs.
 
 Note that `STACC_RELU_ReluThreshold` can be interpreted as either BF16 or FP16. When `IntermediateFormat` is FP32, `STACC_RELU_ReluThreshold` will be interpreted as BF16, which has the same bit layout as the top 16 bits of FP32.
 
