@@ -108,3 +108,5 @@ bool SignMagIsSmaller(uint32_t C, uint32_t D) {
 ## Instruction scheduling
 
 If `SFPSWAP` is used, then on the next cycle, the only instruction that the Vector Unit (SFPU) can accept is `SFPNOP`. If a thread presents any other Vector Unit (SFPU) instruction, then hardware will automatically stall the thread for one cycle. As such, software does not _need_ to insert an `SFPNOP` instruction after `SFPSWAP`, but if it does regardless, the sequence of `SFPSWAP` and `SFPNOP` only requires two cycles rather than three.
+
+That stall does not cover everything, though: if the next Vector Unit (SFPU) instruction after `SFPSWAP` is [`SFPSTOCHRND`](SFPSTOCHRND.md) or [`SFPSHFT2`](SFPSHFT2.md), its write and the `SFPSWAP`'s second write can collide and corrupt `LReg` contents, and if the `SFPSWAP` wrote `LReg[7]` and the next instruction writes to `LReg[LReg[7] & 15]` (the indirect `VD` modes of [`SFPMAD`](SFPMAD.md), [`SFPMULI`](SFPMULI.md), [`SFPADDI`](SFPADDI.md), [`SFPLUT`](SFPLUT.md) and [`SFPLUTFP32`](SFPLUTFP32.md)), it can take that index from `LReg[7]` as it was before the `SFPSWAP`. Software must insert an `SFPNOP` between `SFPSWAP` and any of these.

@@ -152,10 +152,9 @@ Some modes of the [`SFPMOV`](SFPMOV.md), [`SFPCAST`](SFPCAST.md), and [`SFPSTOCH
 ```c
 uint32_t AdvancePRNG(unsigned Lane) {
   static uint32_t State[32];
-  uint32_t Result = State[Lane];
-  uint32_t Taps = __builtin_popcount(Result & 0x80200003);
-  State[Lane] = (~Taps << 31) | (Result >> 1);
-  return Result;
+  uint32_t Taps = __builtin_popcount(State[Lane] & 0x80200003);
+  State[Lane] = (~Taps << 31) | (State[Lane] >> 1);
+  return State[Lane];
 }
 ```
 
