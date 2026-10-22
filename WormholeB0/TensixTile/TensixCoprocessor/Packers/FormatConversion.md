@@ -190,10 +190,10 @@ The early format conversion is configured using a variety of configuration field
   * **To INT16:** Set `IntermediateFormat = INT16`. The top 16 bits of each 32-bit datum pass through unchanged, as opaque data: no conversion, rounding or saturation.
   * **To INT8:** Set `IntermediateFormat = INT8` and `Read_unsigned = false`. Then:
     * **Sign bit and low seven bits:** Set `Read_raw = true`.
-    * **Shifting, rounding, and saturating:** Set `Read_raw = false`. Set the low five bits of `ShiftAmount` to the desired right-shift amount; note that this shifts the magnitude right, leaves the sign bit as-is, and fills the gap with zeros. The shifted-out bits (if any) are used for rounding. A result whose magnitude is zero is +0, even if the input was negative.
+    * **Shifting, rounding, and saturating:** Set `Read_raw = false`. Set the low five bits of `ShiftAmount` to the desired right-shift amount; note that this shifts the magnitude right, leaves the sign bit as-is, and fills the gap with zeros. The shifted-out bits (if any) are used for rounding: to nearest, with ties away from zero (the magnitude rounds half up). The magnitude is then saturated to 127. A result whose magnitude is zero is +0, even if the input was negative.
   * **To UINT8:** Set `IntermediateFormat = INT8` and `Read_unsigned = true`. Then:
     * **Low eight bits:** Set `Read_raw = true`.
-    * **Shifting, rounding, and saturating:** Set `Read_raw = false`. Set the low five bits of `ShiftAmount` to the desired right-shift amount; note that this shifts the magnitude right, leaves the sign bit as-is, and fills the gap with zeros. The shifted-out bits (if any) are used for rounding. The magnitude is saturated to 255 and the sign is then dropped, so a negative input becomes its saturated magnitude rather than 0 (e.g. -5 becomes 5).
+    * **Shifting, rounding, and saturating:** Set `Read_raw = false`. Set the low five bits of `ShiftAmount` to the desired right-shift amount; note that this shifts the magnitude right, leaves the sign bit as-is, and fills the gap with zeros. The shifted-out bits (if any) are used for rounding: to nearest, with ties away from zero (the magnitude rounds half up). The magnitude is saturated to 255 and the sign is then dropped, so a negative input becomes its saturated magnitude rather than 0 (e.g. -5 becomes 5).
 * **From BF16:** Set `Read_32b_data = false`, then:
   * **To TF32:** Set `Read_raw = false`, then choose any of:
     * Set `IntermediateFormat = TF32`.
@@ -236,7 +236,7 @@ if (ConfigState.ALU_FORMAT_SPEC_REG_Dstacc_override) {
 
 if (ConfigState.INT_DESCALE_Enable) {
   if (ConfigState.INT_DESCALE_Mode) {
-    ShiftAmount is Config.INT_DESCALE_VALUES_SEC[(z & 63) >> 2].Value >> ((z & 3) * 8); // For some value z
+    ShiftAmount is Config.INT_DESCALE_VALUES_SEC[(z & 63) >> 2].Value >> ((z & 3) * 8); // z is the packer's Z position (see below)
   } else {
     ShiftAmount is Config.INT_DESCALE_VALUES_SEC0_Value;
   }
@@ -244,6 +244,8 @@ if (ConfigState.INT_DESCALE_Enable) {
   ShiftAmount is 0;
 }
 ```
+
+In `INT_DESCALE_Mode`, `z` is the Z position of the packer's tile position generator (see [edge masking](EdgeMasking.md)) plus the packer's `DEST_TARGET_REG_CFG_PACK_SEC[i].ZOffset`, so each XY plane of `pack_reads_per_xy_plane` rows can have its own shift amount. Only the low five bits of the selected byte are used, in either mode. It does not affect conversions to INT32.
 
 The late format conversion is configured using the `LateFromFormat` and `LateToFormat` variables, which map to concrete configuration fields as:
 ```c
