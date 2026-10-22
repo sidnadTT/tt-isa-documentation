@@ -1,6 +1,6 @@
 # `SFPPUSHC` (Push onto vector conditional execution stack)
 
-**Summary:** Pushes a copy of the current lane predication masks (per-lane `LaneFlags` and `UseLaneFlagsForLaneEnable`) onto the vector conditional execution stack. The stack has a maximum capacity of eight elements, and this instruction must not be used if the stack is already full.
+**Summary:** Pushes a copy of the current lane predication masks (per-lane `LaneFlags` and `UseLaneFlagsForLaneEnable`) onto the vector conditional execution stack. The stack has a maximum capacity of eight elements, and this instruction must not be used if the stack is already full (what current hardware then does is a `NonContractualBehavior`; see [the flag stack](VectorUnit.md#lane-predication-masks)).
 
 **Backend execution unit:** [Vector Unit (SFPU)](VectorUnit.md), simple sub-unit
 
@@ -26,14 +26,19 @@ lanewise {
       // Plain push to stack.
       if (FlagStack.Size() >= 8) {
         // Software should avoid using `Mod1 == 0` when the stack is full.
-        UndefinedBehavior();
+        NonContractualBehavior {
+          // The push below overwrites entry Size() % 8 and leaves Size() above 8.
+        }
       }
       FlagStack.Push({LaneFlags, UseLaneFlagsForLaneEnable});
     } else {
       // Replace or mutate top of stack.
-      if (FlagStack.IsEmpty()) {
+      if (FlagStack.IsEmpty() || FlagStack.Size() > 8) {
         // Software should avoid using `Mod1 != 0` when the stack is empty.
-        UndefinedBehavior();
+        // (Size() above 8 is only reached after an earlier NonContractualBehavior.)
+        NonContractualBehavior {
+          // An empty stack's Top() reads as false, and the replacement below writes entry 7.
+        }
       }
       FlagStackEntry Top = FlagStack.Top();
       if (Mod1 <= 12) {
@@ -55,7 +60,7 @@ lanewise {
         Top.UseLaneFlagsForLaneEnable = true;
         Top.LaneFlags = false;
       }
-      FlagStack.Top() = Top;
+      FlagStack.ReplaceTop(Top);
     }
   }
 }

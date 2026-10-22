@@ -1,6 +1,6 @@
 # `SFPPOPC` (Pop or peek vector conditional execution stack)
 
-**Summary:** In its simplest mode, `SFPPOPC` pops from the vector conditional execution stack, replacing `LaneFlags` and `UseLaneFlagsForLaneEnable` with values popped from the stack. In its more complex modes, `SFPPOPC` peeks from the vector conditional execution stack, mutating `LaneFlags` and `UseLaneFlagsForLaneEnable` in various ways based on the contents of the top of the stack. The simple mode must not be used when the stack is empty. Due to a hardware bug, the complex modes should not be used when the stack is full.
+**Summary:** In its simplest mode, `SFPPOPC` pops from the vector conditional execution stack, replacing `LaneFlags` and `UseLaneFlagsForLaneEnable` with values popped from the stack. In its more complex modes, `SFPPOPC` peeks from the vector conditional execution stack, mutating `LaneFlags` and `UseLaneFlagsForLaneEnable` in various ways based on the contents of the top of the stack. The simple mode must not be used when the stack is empty (what current hardware then does is a `NonContractualBehavior`; see [the flag stack](VectorUnit.md#lane-predication-masks)). Due to a hardware bug, the complex modes should not be used when the stack is full.
 
 **Backend execution unit:** [Vector Unit (SFPU)](VectorUnit.md), simple sub-unit
 
@@ -22,20 +22,21 @@ TT_SFPPOPC(0, 0, /* u4 */ VD, /* u4 */ Mod1)
 ```c
 lanewise {
   if (VD < 12 || LaneConfig.DISABLE_BACKDOOR_LOAD) {
-    // Peek at stack top.
-    FlagStackEntry Top;
-    if (FlagStack.IsEmpty()) {
-      Top.UseLaneFlagsForLaneEnable = false;
-      Top.LaneFlags = false;
-    } else {
-      Top = FlagStack.Top();
+    // Peek at stack top (false and false when the stack is empty).
+    if (FlagStack.Size() > 8) {
+      NonContractualBehavior {
+        // Only reached after a push onto a full stack or a pop from an empty one; see FlagStack.
+      }
     }
+    FlagStackEntry Top = FlagStack.Top();
 
     if (Mod1 == 0) {
       // Plain pop from stack.
       if (FlagStack.IsEmpty()) {
         // Software should avoid using `Mod1 == 0` when the stack is empty.
-        UndefinedBehavior();
+        NonContractualBehavior {
+          // The pop below leaves Size() at 15.
+        }
       }
       FlagStack.Pop();
     }
