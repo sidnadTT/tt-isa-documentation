@@ -71,4 +71,6 @@ struct TilePositionGenerator {
 };
 ```
 
+On Wormhole, a pack instruction with `Last` set does not reset the tile position generator: `X`, `Y` and `Z` run on from one tile to the next, `Y` wrapping to 0 at `pack_reads_per_xy_plane` as above. A tile whose number of rows is not a multiple of `pack_reads_per_xy_plane` therefore leaves the next tile starting partway through `TILE_ROW_SET_MAPPING`. On Blackhole, the first pack instruction after one with `Last` set starts the tile position generator again from position 0.
+
 To use the same `EdgeMask` for all rows of `Dst`, regardless of the tile position generator, set all four of `PCK_EDGE_OFFSET_SEC[c].mask` to the same value.
