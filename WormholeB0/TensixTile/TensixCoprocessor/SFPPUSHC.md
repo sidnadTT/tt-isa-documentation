@@ -19,11 +19,21 @@ TT_SFPPUSHC(0, 0, /* u4 */ VD, 0)
 ```c
 lanewise {
   if (VD < 12 || LaneConfig.DISABLE_BACKDOOR_LOAD) {
-    if (FlagStack.Size() >= 8) {
-      // Software should avoid using SFPPUSHC when the stack is full.
-      UndefinedBehavior();
+    if (Mod1 != 0) { // Reserved instruction modifiers
+      NonContractualBehavior {
+        // Current silicon behavior (not architecturally guaranteed): nothing is pushed and
+        // FlagStack.Size() is unchanged, but the entry at index FlagStack.Size() % 8 is
+        // overwritten (the bottom entry if the stack is full; otherwise an entry above the top,
+        // which nothing reads before a push overwrites it again), and Mod1 == 13 also does
+        // LaneFlags = !LaneFlags.
+      }
+    } else {
+      if (FlagStack.Size() >= 8) {
+        // Software should avoid using SFPPUSHC when the stack is full.
+        UndefinedBehavior();
+      }
+      FlagStack.Push({LaneFlags, UseLaneFlagsForLaneEnable});
     }
-    FlagStack.Push({LaneFlags, UseLaneFlagsForLaneEnable});
   }
 }
 ```
