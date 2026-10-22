@@ -48,8 +48,8 @@ void ApplyAddrMod(uint3_t AddrMod, bool UpdateFidelityPhase = true) {
     else RWC.FidelityPhase += Dst.FidelityIncr;
   }
 
-  if (Bias.BiasClear) RWC.ExtraAddrModBit = 0;
-  else if (Bias.BiasIncr & 3) RWC.ExtraAddrModBit += 1;
+  if (Bias.BiasIncr & 3) RWC.ExtraAddrModBit += 1;
+  else if (Bias.BiasClear) RWC.ExtraAddrModBit = 0;
 }
 
 void ApplyPartialAddrMod(uint3_t AddrMod) {
